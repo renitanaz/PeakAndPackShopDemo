@@ -1,8 +1,10 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const adminRoutes = require('./admin-routes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,6 +15,7 @@ app.use(express.json());
 
 // ---- DATABASE SETUP ----
 const db = new Database(':memory:');
+app.locals.db = db;
 
 db.exec(`
   CREATE TABLE users (
@@ -20,7 +23,8 @@ db.exec(`
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    role TEXT DEFAULT 'customer'
   );
 
   CREATE TABLE products (
@@ -30,7 +34,8 @@ db.exec(`
     price REAL NOT NULL,
     category TEXT,
     stock INTEGER DEFAULT 100,
-    image_url TEXT
+    image_url TEXT,
+    sort_order INTEGER DEFAULT 0
   );
 
   CREATE TABLE orders (
@@ -38,7 +43,8 @@ db.exec(`
     user_id INTEGER,
     total REAL,
     status TEXT DEFAULT 'pending',
-    created_at TEXT DEFAULT (datetime('now'))
+    created_at TEXT DEFAULT (datetime('now')),
+    role TEXT DEFAULT 'customer'
   );
 
   CREATE TABLE order_items (
@@ -74,6 +80,10 @@ products.forEach(p => insertProduct.run(p.name, p.description, p.price, p.catego
 // Seed test user
 const hashedPassword = bcrypt.hashSync('password123', 10);
 db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)').run('Test User', 'test@peakandpack.com', hashedPassword);
+
+// Admin user for Playwright Series 3 RBAC testing
+const adminPassword = bcrypt.hashSync('adminpass123', 10);
+db.prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, 'admin')").run('Admin', 'admin@peakandpack.com', adminPassword);
 
 // ---- MIDDLEWARE ----
 function authenticateToken(req, res, next) {
@@ -139,7 +149,7 @@ app.post('/api/auth/register', (req, res) => {
 
   const hashed = bcrypt.hashSync(password, 10);
   const result = db.prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)').run(name || '', email, hashed);
-  const token = jwt.sign({ id: result.lastInsertRowid, email }, JWT_SECRET, { expiresIn: '24h' });
+  const token = jwt.sign({ id: result.lastInsertRowid, email, role: 'customer' }, JWT_SECRET, { expiresIn: '24h' });
   res.status(201).json({ message: 'User created', token, user: { id: result.lastInsertRowid, name, email } });
 });
 
@@ -152,7 +162,7 @@ app.post('/api/auth/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password)) {
     return res.status(401).json({ error: 'Invalid credentials' });
   }
-  const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role || 'customer' }, JWT_SECRET, { expiresIn: '24h' });
   res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
 });
 
@@ -251,6 +261,10 @@ app.get('/api/search', (req, res) => {
     .all(`%${q}%`, `%${q}%`); // crashes if q is undefined
   res.json({ results, query: q });
 });
+
+// ---- ADMIN EXTENSION ----
+app.use('/api/admin', adminRoutes);
+app.use('/admin', express.static(path.join(__dirname, '../frontend/public/admin')));
 
 app.listen(PORT, () => {
   console.log(`PeakAndPack API running on port ${PORT}`);

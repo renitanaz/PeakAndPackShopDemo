@@ -8,6 +8,7 @@ import Checkout from './pages/Checkout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Orders from './pages/Orders';
+import ProductDetail from './pages/ProductDetail';
 
 function Nav() {
   const { user, logout } = useAuth();
@@ -16,6 +17,15 @@ function Nav() {
   function handleLogout() {
     logout();
     navigate('/');
+  }
+
+  function isAdmin() {
+    const token = localStorage.getItem('token');
+    if (!token) return false;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return payload.role === 'admin';
+    } catch { return false; }
   }
 
   return (
@@ -30,6 +40,9 @@ function Nav() {
       <Link to="/">Products</Link>
       <Link to="/cart">Cart</Link>
       <Link to="/orders">Orders</Link>
+      {user && isAdmin() && (
+        <a href="/admin/" style={{ color: '#E8650A' }}>Admin</a>
+      )}
       <div style={{ marginLeft: 'auto' }}>
         {user ? (
           <>
@@ -62,6 +75,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/orders" element={<Orders />} />
+      <Route path="/product" element={<ProductDetail />} />
     </Routes>
   );
 }
