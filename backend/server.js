@@ -264,7 +264,7 @@ app.get('/api/search', (req, res) => {
 
 // ---- ADMIN EXTENSION ----
 app.use('/api/admin', adminRoutes);
-app.use('/admin', express.static(path.join(__dirname, '../frontend/public/admin')));
+app.use('/admin', express.static(path.join(__dirname, 'public/admin')));
 
 app.listen(PORT, () => {
   console.log(`PeakAndPack API running on port ${PORT}`);
