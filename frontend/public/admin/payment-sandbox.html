@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Payment — PeakAndPack</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f4f7fb; display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .card { background: white; border-radius: 10px; padding: 1.8rem; width: 340px; box-shadow: 0 2px 12px rgba(0,0,0,.1); }
+  h2 { font-size: 1rem; color: #1a1a2e; margin-bottom: 1.2rem; display: flex; align-items: center; gap: .5rem; }
+  h2::before { content: '🔒'; font-size: .9rem; }
+  label { display: block; font-size: .82rem; color: #555; margin-bottom: .25rem; margin-top: .9rem; }
+  input { width: 100%; padding: .55rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; }
+  input:focus { outline: none; border-color: #4f46e5; box-shadow: 0 0 0 2px rgba(79,70,229,.15); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; }
+  .btn { margin-top: 1.4rem; width: 100%; padding: .7rem; background: #4f46e5; color: white; border: none; border-radius: 6px; font-weight: 600; font-size: .95rem; cursor: pointer; }
+  .btn:hover { background: #4338ca; }
+  .success { display: none; text-align: center; padding: 1.5rem; }
+  .success p { color: #1a7a3a; font-weight: 600; margin-top: .5rem; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="form-view">
+    <h2>Secure Payment</h2>
+    <label for="card-number">Card number</label>
+    <input type="text" id="card-number" placeholder="1234 5678 9012 3456" maxlength="19"
+      oninput="this.value=this.value.replace(/\D/g,'').replace(/(.{4})/g,'$1 ').trim()">
+    <div class="row">
+      <div>
+        <label for="expiry">Expiry</label>
+        <input type="text" id="expiry" placeholder="MM/YY" maxlength="5"
+          oninput="this.value=this.value.replace(/\D/g,'').replace(/^(\d{2})(\d)/,'$1/$2')">
+      </div>
+      <div>
+        <label for="cvv">CVV</label>
+        <input type="text" id="cvv" placeholder="123" maxlength="4">
+      </div>
+    </div>
+    <label for="cardholder">Cardholder name</label>
+    <input type="text" id="cardholder" placeholder="Full name on card">
+    <button class="btn" onclick="submitPayment()">Pay now</button>
+  </div>
+  <div class="success" id="success-view">
+    <div style="font-size:2.5rem">✓</div>
+    <p>Payment authorised</p>
+  </div>
+</div>
+<script>
+function submitPayment() {
+  const card = document.getElementById('card-number').value.replace(/\s/g,'');
+  const expiry = document.getElementById('expiry').value;
+  const cvv = document.getElementById('cvv').value;
+  if (card.length < 16 || expiry.length < 5 || cvv.length < 3) {
+    alert('Please fill in all payment fields.');
+    return;
+  }
+  document.getElementById('form-view').style.display = 'none';
+  document.getElementById('success-view').style.display = 'block';
+  // Notify parent window that payment is done
+  window.parent.postMessage({ type: 'PAYMENT_COMPLETE', success: true }, '*');
+}
+</script>
+</body>
+</html>
