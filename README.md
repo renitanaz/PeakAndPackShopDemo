@@ -1,5 +1,7 @@
 # 🏔️ PeakAndPack: AI QA Practice App
 
+[![E2E tests](https://github.com/renitanaz/PeakAndPackShopDemo/actions/workflows/e2e.yml/badge.svg)](https://github.com/renitanaz/PeakAndPackShopDemo/actions/workflows/e2e.yml)
+
 A sample trekking, camping, and travel gear e-commerce app with **intentional bugs** built in. This README covers getting the API running. The Claude-powered AI QA Agent gets built later in the series, as part of learning Approach D (AI QA Agent), it isn't included from the start on purpose.
 
 ---
@@ -12,6 +14,9 @@ PeakAndPackShopDemo/
 │   ├── server.js     ← Main API with 11 built-in bugs
 │   ├── package.json  ← Dependencies
 │   └── render.yaml   ← Render.com deploy config
+├── frontend/         ← The React storefront
+├── e2e/              ← Playwright tests (see e2e/README.md)
+├── .github/workflows/e2e.yml  ← Runs the tests on every pull request
 └── README.md         ← This file
 ```
 

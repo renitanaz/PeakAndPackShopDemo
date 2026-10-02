@@ -1,7 +1,9 @@
 import axios from 'axios';
 
-// Your live PeakAndPack backend on Render
-const API_BASE = 'https://peakandpackshopdemo.onrender.com';
+// The API address. A build can set REACT_APP_API_URL to point at another copy of the backend
+// (the CI pipeline builds against a backend it starts itself). With nothing set, it is the live
+// PeakAndPack backend on Render, so the deployed site behaves exactly as before.
+const API_BASE = process.env.REACT_APP_API_URL || 'https://peakandpackshopdemo.onrender.com';
 
 const api = axios.create({
   baseURL: API_BASE,

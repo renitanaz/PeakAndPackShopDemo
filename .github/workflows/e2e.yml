@@ -1,0 +1,82 @@
+name: E2E tests
+
+# Runs the Playwright suite in e2e/ against a copy of PeakAndPack that the job starts itself,
+# so every run tests the code being pushed, not whatever is deployed.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * *'      # nightly at 2 a.m. UTC
+  workflow_dispatch:         # lets you run it by hand from the Actions tab
+
+# A new push to the same branch cancels the run that is still going
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            e2e/package-lock.json
+
+      - name: Install the backend
+        working-directory: backend
+        run: npm ci
+
+      - name: Build the frontend against the local backend
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+        env:
+          REACT_APP_API_URL: http://localhost:3001   # the backend the tests start
+          CI: 'false'                                # a React build treats warnings as errors when CI is true
+
+      - name: Install the tests and the browser
+        working-directory: e2e
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      # Playwright starts the backend and a static server for the built frontend (see playwright.config.ts)
+      - name: Run the tests
+        working-directory: e2e
+        run: npm test
+
+      # Fail the run if more than 5% of the tests were flaky (passed only on a retry)
+      - name: Flaky gate
+        if: ${{ !cancelled() }}
+        working-directory: e2e
+        run: npm run gate
+
+      # A readable summary on the run's page
+      - name: Summary
+        if: ${{ !cancelled() }}
+        working-directory: e2e
+        run: node scripts/step-summary.js >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/results.xml
+          retention-days: 14

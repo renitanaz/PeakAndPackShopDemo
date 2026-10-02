@@ -44,7 +44,10 @@ db.exec(`
     total REAL,
     status TEXT DEFAULT 'pending',
     created_at TEXT DEFAULT (datetime('now')),
-    role TEXT DEFAULT 'customer'
+    role TEXT DEFAULT 'customer',
+    delivery_method TEXT DEFAULT 'standard',
+    delivery_date TEXT,
+    delivery_slot TEXT
   );
 
   CREATE TABLE order_items (
@@ -71,7 +74,7 @@ const products = [
   { name: '60L Travel Backpack', description: 'Expedition-grade 60L hiking and travel backpack', price: 145.00, category: 'Travel', stock: 35, image_url: 'https://picsum.photos/seed/backpack/300/200' },
   // BUG #3: Extremely high price (likely a data entry error)
   { name: 'Insulated Water Bottle', description: 'Double-wall insulated steel bottle, 1L', price: 9999.99, category: 'Trekking', stock: 80, image_url: 'https://picsum.photos/seed/bottle/300/200' },
-  { name: 'Climbing Harness', description: 'Adjustable mountaineering harness with gear loops', price: 64.99, category: 'Mountaineering', stock: 25, image_url: 'https://picsum.photos/seed/harness/300/200' },
+  { name: 'Climbing Harness', description: 'Adjustable mountaineering harness with gear loops', price: 64.99, category: 'Mountaineering', stock: 0, image_url: 'https://picsum.photos/seed/harness/300/200' },
 ];
 
 const insertProduct = db.prepare('INSERT INTO products (name, description, price, category, stock, image_url) VALUES (?, ?, ?, ?, ?, ?)');
@@ -207,14 +210,21 @@ app.post('/api/orders/checkout', authenticateToken, (req, res) => {
   if (cart.length === 0) return res.status(400).json({ error: 'Cart is empty' });
 
   // BUG #9: Discount code "SAVE10" gives 100% discount (should be 10%)
-  const { discount_code } = req.body;
+  const { discount_code, delivery_method = 'standard', delivery_date = null, delivery_slot = null } = req.body;
+
+  // Delivery choices: store pickup isn't available yet, and dates must look like 2026-10-15
+  if (delivery_method === 'pickup') return res.status(400).json({ error: 'Store pickup is not available' });
+  if (!['standard', 'express'].includes(delivery_method)) return res.status(400).json({ error: 'Unknown delivery method' });
+  if (delivery_date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(delivery_date)) return res.status(400).json({ error: 'delivery_date must look like 2026-10-15' });
+
   let discount = 0;
   if (discount_code === 'SAVE10') discount = 1.0; // Should be 0.10
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const total = subtotal * (1 - discount);
 
-  const order = db.prepare('INSERT INTO orders (user_id, total, status) VALUES (?, ?, ?)').run(req.user.id, total, 'confirmed');
+  const order = db.prepare('INSERT INTO orders (user_id, total, status, delivery_method, delivery_date, delivery_slot) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(req.user.id, total, 'confirmed', delivery_method, delivery_date, delivery_slot);
   const insertItem = db.prepare('INSERT INTO order_items (order_id, product_id, quantity, price) VALUES (?, ?, ?, ?)');
 
   cart.forEach(item => insertItem.run(order.lastInsertRowid, item.product_id, item.quantity, item.price));
@@ -224,7 +234,10 @@ app.post('/api/orders/checkout', authenticateToken, (req, res) => {
     message: 'Order placed successfully',
     order_id: order.lastInsertRowid,
     total: Math.round(total * 100) / 100,
-    status: 'confirmed'
+    status: 'confirmed',
+    delivery_method,
+    delivery_date,
+    delivery_slot
   });
 });
 

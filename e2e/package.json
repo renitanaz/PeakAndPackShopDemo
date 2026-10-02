@@ -1,0 +1,20 @@
+{
+  "name": "peakandpack-e2e",
+  "private": true,
+  "description": "End-to-end tests for PeakAndPack: run in CI on every pull request",
+  "scripts": {
+    "app:build": "cd ../frontend && npm ci && cross-env REACT_APP_API_URL=http://localhost:3001 npm run build",
+    "test": "playwright test",
+    "test:smoke": "playwright test --project=smoke",
+    "test:critical": "playwright test --grep @critical",
+    "test:headed": "playwright test --headed",
+    "report": "playwright show-report",
+    "gate": "node scripts/flaky-gate.js"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
+    "cross-env": "^10.1.0"
+  }
+}

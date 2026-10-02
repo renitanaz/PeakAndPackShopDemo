@@ -38,6 +38,11 @@ export default function Orders() {
           }}>
             <p><strong>Order #{o.id}</strong> &middot; {o.status}</p>
             <p>Total: ${o.total.toFixed(2)}</p>
+            <p>
+              Delivery: {o.delivery_method === 'express' ? 'Express' : 'Standard'}
+              {o.delivery_date ? `, ${o.delivery_date}` : ''}
+              {o.delivery_slot ? `, ${o.delivery_slot}` : ''}
+            </p>
             <p style={{ fontSize: 12, color: '#888' }}>{o.created_at}</p>
           </div>
         ))
